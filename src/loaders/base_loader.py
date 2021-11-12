@@ -69,66 +69,63 @@ class BaseLoader(abc.ABC):
 
         full_file_data = []
 
-        try:
-            with open(self.filename, 'r') as f:
-                lines = [l.strip() for l in f.readlines()]
+        with open(self.filename, 'r') as f:
+            lines = [l.strip() for l in f.readlines()]
 
-            ts_data_chunk = []
-            capturing_data = False
-            filtering = False
-            braces = 0
-            braces_at_filter = 0
+        ts_data_chunk = []
+        capturing_data = False
+        filtering = False
+        braces = 0
+        braces_at_filter = 0
 
-            for l in lines:
-                # Start of pokemon's data
-                if re.match(r'^[a-z0-9]+: {$', l):
-                    capturing_data = True
+        for l in lines:
+            # Start of pokemon's data
+            if re.match(r'^[a-z0-9]+: {$', l):
+                capturing_data = True
 
 
-                if capturing_data:
+            if capturing_data:
 
-                    # Check if this line should start the filtering process OR we are already filtering
-                    if not self._filter_line(l) and not filtering:
-                        ts_data_chunk.append(l)
-                    else:
-                        if not filtering:
-                            braces_at_filter = braces
-                        filtering = True
+                # Check if this line should start the filtering process OR we are already filtering
+                if not self._filter_line(l) and not filtering:
+                    ts_data_chunk.append(l)
+                else:
+                    if not filtering:
+                        braces_at_filter = braces
+                    filtering = True
 
-                    braces += l.count('{')
-                    braces -= l.count('}')
+                braces += l.count('{')
+                braces -= l.count('}')
 
-                    if braces < 0:
-                        raise ValueError("File formatted incorrectly, braces do not match")
+                if braces < 0:
+                    raise ValueError("File formatted incorrectly, braces do not match")
 
-                    if braces <= braces_at_filter:
-                        filtering = False
+                if braces <= braces_at_filter:
+                    filtering = False
 
-                    if braces == 0:
-                        # At this point ts_data_chunk holds everything for a given pokemon, so
-                        # convert it from the typescript format into json
-                        jsoned_chunk = self._ts_to_json(ts_data_chunk)
+                if braces == 0:
+                    # At this point ts_data_chunk holds everything for a given pokemon, so
+                    # convert it from the typescript format into json
+                    jsoned_chunk = self._ts_to_json(ts_data_chunk)
 
-                        processed_data = self._process_data(jsoned_chunk)
+                    processed_data = self._process_data(jsoned_chunk)
 
-                        full_file_data.append(processed_data)
-                        ts_data_chunk = []
-                        capturing_data = False
+                    full_file_data.append(processed_data)
+                    ts_data_chunk = []
+                    capturing_data = False
 
-            dicted_str = f"{{{''.join(full_file_data)}}}"
-            cleaned_str = self._remove_trailing_commas(dicted_str)
+        dicted_str = f"{{{''.join(full_file_data)}}}"
+        cleaned_str = self._remove_trailing_commas(dicted_str)
 
-            file_dict = json.loads(cleaned_str)
+        file_dict = json.loads(cleaned_str)
 
-            possible_keys = []
-            for v in file_dict.values():
-                possible_keys += v.keys()
+        possible_keys = []
+        for v in file_dict.values():
+            possible_keys += v.keys()
 
-            possible_keys = list(set(possible_keys))
+        possible_keys = list(set(possible_keys))
 
-            return file_dict
-        except IOError as e:
-            raise e
+        return file_dict
 
     def get_field_frequency(self):
         data = self._load_data_from_file()
