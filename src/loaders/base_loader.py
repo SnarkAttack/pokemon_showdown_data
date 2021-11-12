@@ -46,9 +46,7 @@ def ts_to_json(ts_str_list):
 
     uncommented_strs = [remove_comments(ts_str) for ts_str in ts_str_list]
     quoted_strs = [quote_enclose_key(ts_str) for ts_str in uncommented_strs]
-    jsoned_str = f"{{{''.join(quoted_strs)}}}"
-    comma_cleaned_str = remove_trailing_commas(jsoned_str)
-    return json.loads(comma_cleaned_str)
+    return ''.join(quoted_strs)
 
 class BaseLoader(abc.ABC):
 
@@ -88,7 +86,14 @@ class BaseLoader(abc.ABC):
                 elif len(ts_data_chunk) != 0:
                     ts_data_chunk.append(l)
 
-            return full_file_data
+            dicted_str = f"{{{''.join(full_file_data)}}}"
+            cleaned_str = remove_trailing_commas(dicted_str)
+
+            file_dict = json.loads(cleaned_str)
+
+            print(file_dict)
+
+            return file_dict
         except IOError as e:
             raise e
 
