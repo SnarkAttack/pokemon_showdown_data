@@ -1,6 +1,6 @@
-from .base_loader import BaseLoader
+from .base_loader import FunctionRemovalLoader
 
-class AbilityLoader(BaseLoader):
+class AbilityLoader(FunctionRemovalLoader):
 
     def __init__(self):
         super().__init__('abilities.ts')
@@ -10,11 +10,6 @@ class AbilityLoader(BaseLoader):
 
     def load_ability_by_name(self, name):
         return self.load_all_abilities()[name]
-
-    def _filter_line(self, l):
-        if '(' in l and ')' in l:
-            return True
-        return False
 
     def _process_data(self, ability_data):
         return ability_data

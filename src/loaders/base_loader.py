@@ -145,3 +145,13 @@ class BaseLoader(abc.ABC):
     @abc.abstractmethod
     def _save_to_database(self, cls_object):
         raise not NotImplementedError()
+
+class FunctionRemovalLoader(BaseLoader, abc.ABC):
+
+    def __init__(self, filename):
+        super().__init__(filename)
+
+    def _filter_line(self, l):
+        if '(' in l and ')' in l:
+            return True
+        return False
