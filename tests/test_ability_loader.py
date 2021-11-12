@@ -10,4 +10,4 @@ def test_ability_loader():
 
     al = AbilityLoader()
 
-    assert al.load_ability_by_name('adaptability') == adaptability_data
+    assert al.load_ability_by_key('adaptability') == adaptability_data

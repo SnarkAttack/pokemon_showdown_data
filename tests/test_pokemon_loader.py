@@ -37,4 +37,4 @@ def test_load_all():
 
     pl = PokemonLoader()
 
-    assert pl.load_pokemon_by_name("bulbasaur") == bulba_data
+    assert pl.load_pokemon_by_key("bulbasaur") == bulba_data

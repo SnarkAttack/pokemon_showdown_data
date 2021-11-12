@@ -8,10 +8,10 @@ class PokemonLoader(BaseLoader):
     def load_all_pokemon(self):
         return self._load_data_from_file()
 
-    def load_pokemon_by_name(self, name):
+    def load_pokemon_by_key(self, key):
         # TODO: Have this check cache first before pulling from showdown files
         # -1 because ids start at 1 with Bulbasuar
-        return self.load_all_pokemon()[name]
+        return self.load_all_pokemon()[key]
 
     def _process_data(self, jsoned_data):
         # TODO: convert to Pokemon class

@@ -8,8 +8,8 @@ class AbilityLoader(FunctionRemovalLoader):
     def load_all_abilities(self):
         return self._load_data_from_file()
 
-    def load_ability_by_name(self, name):
-        return self.load_all_abilities()[name]
+    def load_ability_by_key(self, key):
+        return self.load_all_abilities()[key]
 
     def _process_data(self, ability_data):
         return ability_data
