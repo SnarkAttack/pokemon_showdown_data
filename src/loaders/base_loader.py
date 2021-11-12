@@ -119,12 +119,6 @@ class BaseLoader(abc.ABC):
 
         file_dict = json.loads(cleaned_str)
 
-        possible_keys = []
-        for v in file_dict.values():
-            possible_keys += v.keys()
-
-        possible_keys = list(set(possible_keys))
-
         return file_dict
 
     def get_field_frequency(self):
