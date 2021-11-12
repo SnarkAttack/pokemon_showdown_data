@@ -1,7 +1,7 @@
 import json
 from loaders.pokemon_loader import PokemonLoader
 
-def test_load_all():
+def test_pokemon_loader():
 
     bulba_data = {
         "num": 1,
