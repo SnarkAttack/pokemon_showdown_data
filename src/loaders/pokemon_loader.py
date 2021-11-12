@@ -16,3 +16,6 @@ class PokemonLoader(BaseLoader):
     def _process_data(self, jsoned_data):
         # TODO: convert to Pokemon class
         return jsoned_data
+
+    def _save_to_database(self, pokemon_obj):
+        pass

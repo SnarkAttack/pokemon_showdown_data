@@ -2,56 +2,65 @@ import os
 import re
 import abc
 import json
+from collections import Counter
 
 from utils import get_package_root
-
-def remove_comments(ts_pair_str):
-    """
-    Find any instances of '//' and remove them and everything that follows
-    """
-    comment_location = ts_pair_str.find('//')
-
-    if comment_location == -1:
-        return ts_pair_str
-    else:
-        return ts_pair_str[:comment_location]
-
-def quote_enclose_key(ts_pair_str):
-
-    # Colon must be part of the group, otherwise the replace() call can add unexpected quotations
-    # (seen in hidden abilities that start with H, which is also the hidden ability key)
-    pattern = re.compile(r'([\w]+:)')
-
-    matches = pattern.findall(ts_pair_str)
-
-    for match in matches:
-        # This is a specific case to catch Type: Null's name
-        # TODO: Move this check somewhere else, too specific of a case to just in a utility method
-        # Maybe make quote_enclose_key a class method so each loader can override as needed
-        if match != "Type:":
-            ts_pair_str = ts_pair_str.replace(match, f'\"{match[:-1]}\":')
-
-    return ts_pair_str
-
-def remove_trailing_commas(json_str):
-    """
-    Removes trailing commas that will break the json.loads() call
-    """
-    json_str = re.sub(r',[ ]*}', r'}', json_str)
-    json_str = re.sub(r',[ ]*]', r']', json_str)
-
-    return json_str
-
-def ts_to_json(ts_str_list):
-
-    uncommented_strs = [remove_comments(ts_str) for ts_str in ts_str_list]
-    quoted_strs = [quote_enclose_key(ts_str) for ts_str in uncommented_strs]
-    return ''.join(quoted_strs)
 
 class BaseLoader(abc.ABC):
 
     def __init__(self, filename):
         self.filename = os.path.join(get_package_root(), 'pokemon-showdown', 'data', filename)
+
+        self.filter = False
+
+    def _remove_comments(self, ts_pair_str):
+        """
+        Find any instances of '//' and remove them and everything that follows
+        """
+        comment_location = ts_pair_str.find('//')
+
+        if comment_location == -1:
+            return ts_pair_str
+        else:
+            return ts_pair_str[:comment_location]
+
+    def _quote_enclose_key(self, ts_pair_str):
+
+        # Colon must be part of the group, otherwise the replace() call can add unexpected quotations
+        # (seen in hidden abilities that start with H, which is also the hidden ability key)
+        pattern = re.compile(r'([\w]+:)')
+
+        matches = pattern.findall(ts_pair_str)
+
+        for match in matches:
+            # This is a specific case to catch Type: Null's name
+            # TODO: Move this check somewhere else, too specific of a case to just in a utility method
+            # Maybe make quote_enclose_key a class method so each loader can override as needed
+            if match != "Type:":
+                ts_pair_str = ts_pair_str.replace(match, f'\"{match[:-1]}\":')
+
+        return ts_pair_str
+
+    def _remove_trailing_commas(self, json_str):
+        """
+        Removes trailing commas that will break the json.loads() call
+        """
+        json_str = re.sub(r',[ ]*}', r'}', json_str)
+        json_str = re.sub(r',[ ]*]', r']', json_str)
+
+        return json_str
+
+    def _ts_to_json(self, ts_str_list):
+
+        uncommented_strs = [self._remove_comments(ts_str) for ts_str in ts_str_list]
+        quoted_strs = [self._quote_enclose_key(ts_str) for ts_str in uncommented_strs]
+        return ''.join(quoted_strs)
+
+    def _filter_line(self, l):
+        """
+        Return True if the line should be ignored
+        """
+        return False
 
     def _load_data_from_file(self):
         """
@@ -65,38 +74,74 @@ class BaseLoader(abc.ABC):
                 lines = [l.strip() for l in f.readlines()]
 
             ts_data_chunk = []
+            capturing_data = False
+            filtering = False
+            braces = 0
+            braces_at_filter = 0
 
             for l in lines:
                 # Start of pokemon's data
                 if re.match(r'^[a-z0-9]+: {$', l):
-                    ts_data_chunk.append(l)
-                # Terminate collection for a pokemon
-                elif l == '},':
-                    ts_data_chunk.append(l)
+                    capturing_data = True
 
-                    # At this point pokemon_data holds everything for a given pokemon, so
-                    # convert it from the typescript format into json
-                    jsoned_chunk = ts_to_json(ts_data_chunk)
 
-                    processed_data = self._process_data(jsoned_chunk)
+                if capturing_data:
 
-                    full_file_data.append(processed_data)
-                    ts_data_chunk = []
-                # Means we are in the middle of a pokemon's data
-                elif len(ts_data_chunk) != 0:
-                    ts_data_chunk.append(l)
+                    # Check if this line should start the filtering process OR we are already filtering
+                    if not self._filter_line(l) and not filtering:
+                        ts_data_chunk.append(l)
+                    else:
+                        if not filtering:
+                            braces_at_filter = braces
+                        filtering = True
+
+                    braces += l.count('{')
+                    braces -= l.count('}')
+
+                    if braces < 0:
+                        raise ValueError("File formatted incorrectly, braces do not match")
+
+                    if braces <= braces_at_filter:
+                        filtering = False
+
+                    if braces == 0:
+                        # At this point ts_data_chunk holds everything for a given pokemon, so
+                        # convert it from the typescript format into json
+                        jsoned_chunk = self._ts_to_json(ts_data_chunk)
+
+                        processed_data = self._process_data(jsoned_chunk)
+
+                        full_file_data.append(processed_data)
+                        ts_data_chunk = []
+                        capturing_data = False
 
             dicted_str = f"{{{''.join(full_file_data)}}}"
-            cleaned_str = remove_trailing_commas(dicted_str)
+            cleaned_str = self._remove_trailing_commas(dicted_str)
 
             file_dict = json.loads(cleaned_str)
 
-            print(file_dict)
+            possible_keys = []
+            for v in file_dict.values():
+                possible_keys += v.keys()
+
+            possible_keys = list(set(possible_keys))
 
             return file_dict
         except IOError as e:
             raise e
 
+    def get_field_frequency(self):
+        data = self._load_data_from_file()
+        fields = []
+        for v in data.values():
+            fields += v.keys()
+        c = Counter(fields)
+        return c
+
     @abc.abstractmethod
     def _process_data(self, data):
         raise NotImplementedError()
+
+    @abc.abstractmethod
+    def _save_to_database(self, cls_object):
+        raise not NotImplementedError()
