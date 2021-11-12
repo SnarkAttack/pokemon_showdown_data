@@ -39,6 +39,9 @@ class BaseLoader(abc.ABC):
             if match != "Type:":
                 ts_pair_str = ts_pair_str.replace(match, f'\"{match[:-1]}\":')
 
+        # Replace single quotes with doube quotes for JSON, making sure not to replace any apostrophes
+        ts_pair_str = ts_pair_str.replace(' \'', ' "').replace('\',', '",')
+
         return ts_pair_str
 
     def _remove_trailing_commas(self, json_str):
@@ -116,6 +119,8 @@ class BaseLoader(abc.ABC):
 
         dicted_str = f"{{{''.join(full_file_data)}}}"
         cleaned_str = self._remove_trailing_commas(dicted_str)
+
+        print(cleaned_str)
 
         file_dict = json.loads(cleaned_str)
 
