@@ -1,4 +1,4 @@
-name: Lint
+name: 'Quality Control'
 on: [push]
 
 jobs:
@@ -15,7 +15,14 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        python -m pip install .[lint]
+        python -m pip install .
     - name: Analysing the code with pylint
       run: |
+        python -m pip install .[lint]
         flake8
+    - name: Running Pytest tests
+      run: |
+        python -m pip install .[test]
+        pytest
+    - name: Check code coverage
+      uses: romeovs/lcov-reporter-action@v0.2.11
